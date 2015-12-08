@@ -26,21 +26,21 @@ function SudokuBoard(squareSize) {
 
 SudokuBoard.prototype = {
   _mouseDown: function(event) {
-    var xp, yp, br = this.canvas.getBoundingClientRect();
-    xp = event.clientX - br.left;
-    yp = event.clientY - br.top;
-    var y, x;
-    outerLoop:
-    for (y = 0; y < 9; y++) {
-      for (x = 0; x < 9; x++) {
-        var loc = this._squareLocation(x, y);
-        if (xp > loc[0] && xp < loc[0] + this.squareSize &&
-            yp > loc[1] && yp < loc[1] + this.squareSize) {
-          this.focusSquare(x, y);
-          break outerLoop;
-        }
-      }
+    var br = this.canvas.getBoundingClientRect();
+    var xp = event.clientX - br.left;
+    var yp = event.clientY - br.top;
+    var x = null, y = null;
+    for (var i = 0; i < 9; i++) {
+      var loc = this._squareLocation(i, i);
+      if (x === null && xp > loc[0] && xp < loc[0] + this.squareSize)
+        x = i;
+      if (y === null && yp > loc[1] && yp < loc[1] + this.squareSize)
+        y = i;
+      if (x !== null && y !== null)
+        break;
     }
+    if (i !== 9)
+      this.focusSquare(x, y);
   },
   _keyDown: function(event) {
     switch (event.which) {
