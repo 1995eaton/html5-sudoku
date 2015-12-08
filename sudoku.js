@@ -42,8 +42,42 @@ SudokuBoard.prototype = {
     if (i !== 9)
       this.focusSquare(x, y);
   },
+  nextSquare(stepSize) {
+    if (this._lastHover === null)
+      return;
+    if (stepSize === undefined)
+      stepSize = 1;
+    var n = this._lastHover[1] * 9 + this._lastHover[0];
+    n += stepSize;
+    if (n >= 0 && n < 81)
+      this.focusSquare(n % 9, ~~(n / 9));
+  },
   _keyDown: function(event) {
     switch (event.which) {
+    case 8: // Backspace
+      event.preventDefault();
+      if (this._lastHover === null)
+        break;
+      var x = this._lastHover[0], y = this._lastHover[1];
+      if (this._givens[y][x])
+        break;
+      if (this._noteMode) {
+        this._notes[y][x] = this._notes[y][x].map(function() {
+          return false;
+        });
+      } else {
+        this.board[y][x] = 0;
+      }
+      this.setSquare(x, y, this.board[y][x], true);
+      break;
+    case 32: // Space
+      event.preventDefault();
+      this.nextSquare(event.shiftKey ? -1 : 1);
+      break;
+    case 13: // Enter
+      event.preventDefault();
+      this.nextSquare(1);
+      break;
     case 37: this.moveSelection('left'); break;
     case 38: this.moveSelection('up'); break;
     case 39: this.moveSelection('right'); break;
