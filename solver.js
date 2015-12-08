@@ -139,6 +139,15 @@ SudokuSolver.prototype = {
       ret.board = y;
       --i; dir = -1;
     }
+    if (ret.board !== null) {
+      var board = Array.apply(null, Array(9)).map(function(_, y) {
+        return Array.apply(null, Array(9)).map(function(_, x) {
+          return ret.board[y * 9 + x];
+        });
+      });
+      ret.board = board;
+      console.log(ret.board);
+    }
     return ret;
   }
 };
