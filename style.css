@@ -1,0 +1,7 @@
+html, body {
+  font-family: Helvetica, 'Helvetica Neue', Neue, sans-serif, Arial;
+}
+
+* {
+  box-sizing: border-box;
+}
