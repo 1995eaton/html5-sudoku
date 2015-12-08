@@ -15,46 +15,16 @@ var getFontHeight = (function() {
 })();
 
 function SudokuBoard(squareSize) {
-  this.squareSize = ~~squareSize || 50;
-  this.setLineWidths(8, 4);
+  this.setLineWidths(4, 1);
   this.canvas = document.createElement('canvas');
   this.canvas.className = 'sudoku-board';
-  this.setSize(this.squareSize);
+  this.setSize(~~squareSize || 50);
   this._ctx = this.canvas.getContext('2d');
   this.clear();
   this._setupListeners();
 }
 
 SudokuBoard.prototype = {
-  _mouseMove: function(event) {
-    var xp, yp, br = this.canvas.getBoundingClientRect();
-    xp = event.clientX - br.left;
-    yp = event.clientY - br.top;
-    var y, x;
-    outerLoop:
-    for (y = 0; y < 9; y++) {
-      for (x = 0; x < 9; x++) {
-        var loc = this._squareLocation(x, y);
-        if (xp > loc[0] && xp < loc[0] + this.squareSize &&
-            yp > loc[1] && yp < loc[1] + this.squareSize) {
-          if (this._lastHover === null) {
-            this.setSquare(x, y, this.board[y][x], true);
-          } else if (this._lastHover[0] !== x || this._lastHover[1] !== y) {
-            this.setSquare(this._lastHover[0], this._lastHover[1],
-                           this.board[this._lastHover[1]][this._lastHover[0]]);
-            this.setSquare(x, y, this.board[y][x], true);
-          }
-          this._lastHover = [x, y];
-          break outerLoop;
-        }
-      }
-    }
-    if (this._lastHover !== null && (x === 9 || y === 9))
-        this.setSquare(this._lastHover[0], this._lastHover[1],
-                       this.board[this._lastHover[1]][this._lastHover[0]]);
-    if (x === 9 && y === 9)
-      this._lastHover = null;
-  },
   _mouseDown: function(event) {
     var xp, yp, br = this.canvas.getBoundingClientRect();
     xp = event.clientX - br.left;
@@ -66,29 +36,66 @@ SudokuBoard.prototype = {
         var loc = this._squareLocation(x, y);
         if (xp > loc[0] && xp < loc[0] + this.squareSize &&
             yp > loc[1] && yp < loc[1] + this.squareSize) {
-          if (this._lastHover === null) {
-            this.setSquare(x, y, this.board[y][x], true);
-          } else if (this._lastHover[0] !== x || this._lastHover[1] !== y) {
-            this.setSquare(this._lastHover[0], this._lastHover[1],
-                           this.board[this._lastHover[1]][this._lastHover[0]]);
-            this.setSquare(x, y, this.board[y][x], true);
-          }
-          this._lastHover = [x, y];
+          this.focusSquare(x, y);
           break outerLoop;
         }
       }
     }
-    if (this._lastHover !== null && (x === 9 || y === 9))
-        this.setSquare(this._lastHover[0], this._lastHover[1],
-                       this.board[this._lastHover[1]][this._lastHover[0]]);
-    if (x === 9 && y === 9)
-      this._lastHover = null;
+  },
+  _keyDown: function(event) {
+    switch (event.which) {
+    case 37: this.moveSelection('left'); break;
+    case 38: this.moveSelection('up'); break;
+    case 39: this.moveSelection('right'); break;
+    case 40: this.moveSelection('down'); break;
+    }
+  },
+  moveSelection: function(direction) {
+    var hv = this._lastHover;
+    var lv = hv.slice();
+    var match = false;
+    switch (direction) {
+    case 'down':
+      if (hv[1] < 8) match = (hv[1]++, true);
+      break;
+    case 'up':
+      if (hv[1] > 0) match = (hv[1]--, true);
+      break;
+    case 'right':
+      if (hv[0] < 8) match = (hv[0]++, true);
+      break;
+    case 'left':
+      if (hv[0] > 0) match = (hv[0]--, true);
+      break;
+    }
+    if (match) {
+      this.setSquare(lv[0], lv[1], this.board[lv[1]][lv[0]]);
+      key = this.board[hv[1]][hv[0]];
+      this.setSquare(hv[0], hv[1], +key, true);
+    }
   },
   _keyPress: function(event) {
     var key = String.fromCharCode(event.which);
-    // console.log(key);
-    if (this._lastHover !== null && key >= '0' && key <= '9') {
-      if (!this._hintMode) {
+    var noteKeys = {
+      '!': '1',
+      '@': '2',
+      '#': '3',
+      '$': '4',
+      '%': '5',
+      '^': '6',
+      '&': '7',
+      '*': '8',
+      '(': '9'
+    };
+    if (this._lastHover === null)
+      return;
+    var tempNoteMode = false;
+    if (noteKeys.hasOwnProperty(key)) {
+      key = noteKeys[key];
+      tempNoteMode = true;
+    }
+    if (key >= '0' && key <= '9') {
+      if (!this._noteMode && !tempNoteMode) {
         this.setSquare(this._lastHover[0], this._lastHover[1], +key, true);
       } else {
         var x = this._lastHover[0], y = this._lastHover[1];
@@ -97,41 +104,53 @@ SudokuBoard.prototype = {
             if (+key === 0) {
               this.board[y][x] = 0;
               this.setSquare(this._lastHover[0], this._lastHover[1], this.board[y][x], true);
-              this.updateHints(x, y);
             }
             return;
           }
           if (+key === 0) {
-            this._hints[y][x] = this._hints[y][x].map(function() {
+            this._notes[y][x] = this._notes[y][x].map(function() {
               return false;
             });
           } else {
-            this._hints[y][x][+key - 1] = !this._hints[y][x][+key - 1];
+            this._notes[y][x][+key - 1] = !this._notes[y][x][+key - 1];
           }
           this.setSquare(this._lastHover[0], this._lastHover[1], this.board[y][x], true);
-          this.updateHints(x, y);
         }
       }
-    } else if (this._lastHover !== null) {
+    } else {
       var hv = this._lastHover;
       var lv = hv.slice();
       var match = false;
       switch (key) {
-      case 'j':
-        if (hv[1] < 8) match = (hv[1]++, true);
-        break;
-      case 'k':
-        if (hv[1] > 0) match = (hv[1]--, true);
-        break;
-      case 'l':
-        if (hv[0] < 8) match = (hv[0]++, true);
-        break;
-      case 'h':
-        if (hv[0] > 0) match = (hv[0]--, true);
-        break;
+      case 'h': this.moveSelection('left'); break;
+      case 'k': this.moveSelection('up'); break;
+      case 'l': this.moveSelection('right'); break;
+      case 'j': this.moveSelection('down'); break;
       case 'H':
-        this._hintMode = !this._hintMode;
+        this._noteMode = !this._noteMode;
         this.setSquare(hv[0], hv[1], this.board[hv[1]][hv[0]], true);
+        break;
+      case 'Z':
+        this.applySolution();
+        this._lastHover = null;
+        this.focusSquare(4, 4);
+        break;
+      case 'X':
+        this.clear();
+        this.focusSquare(4, 4);
+        break;
+      case ')':
+        if (this._noteMode) {
+          this._notes[hv[1]][hv[0]] = this._notes[hv[1]][hv[0]].map(function() {
+            return true;
+          });
+          this.setSquare(hv[0], hv[1], this.board[hv[1]][hv[0]], true);
+        } else {
+          this._notes[hv[1]][hv[0]] = this._notes[hv[1]][hv[0]].map(function() {
+            return false;
+          });
+          this.setSquare(hv[0], hv[1], this.board[hv[1]][hv[0]], true);
+        }
         break;
       case 'E':
         this.showErrors();
@@ -145,8 +164,8 @@ SudokuBoard.prototype = {
     }
   },
   _setupListeners: function() {
-    // this.canvas.onmousemove = this._mouseMove.bind(this);
     this.canvas.onmousedown = this._mouseDown.bind(this);
+    window.onkeydown = this._keyDown.bind(this);
     window.onkeypress = this._keyPress.bind(this);
   },
   setLineWidths: function(major, minor) {
@@ -154,6 +173,10 @@ SudokuBoard.prototype = {
     this.minorWidth = minor + (minor & 1);
   },
   setSize: function(pixels) {
+    // avoid floating point spacing for notes
+    pixels = (pixels - pixels % 3) + 3;
+
+    this.squareSize = pixels;
     var size = pixels * 9 + this.minorWidth * 6 + this.majorWidth * 4;
     this.canvas.width  = size;
     this.canvas.height = size;
@@ -172,6 +195,21 @@ SudokuBoard.prototype = {
     var xp = loc[0], yp = loc[1];
     this._ctx.clearRect(xp, yp, this.squareSize, this.squareSize);
   },
+  focusSquare: function(x, y) {
+    if (this._lastHover === null) {
+      this.setSquare(x, y, this.board[y][x], true);
+    } else if (this._lastHover[0] !== x || this._lastHover[1] !== y) {
+      this.setSquare(this._lastHover[0], this._lastHover[1],
+                     this.board[this._lastHover[1]][this._lastHover[0]]);
+      this.setSquare(x, y, this.board[y][x], true);
+    }
+    this._lastHover = [x, y];
+    if (this._lastHover !== null && (x === 9 || y === 9))
+        this.setSquare(this._lastHover[0], this._lastHover[1],
+                       this.board[this._lastHover[1]][this._lastHover[0]]);
+    if (x === 9 && y === 9)
+      this._lastHover = null;
+  },
   setSquare: function(x, y, n, color) {
     var loc = this._squareLocation(x, y);
     if (this._givens[y][x]) {
@@ -179,7 +217,7 @@ SudokuBoard.prototype = {
     } else if (n === 0)
       this.board[y][x] = 0;
     if (color) {
-      if (!this._hintMode) {
+      if (!this._noteMode) {
         this._ctx.fillStyle = '#ddd';
       } else {
         this._ctx.fillStyle = '#c2ffc2';
@@ -193,11 +231,11 @@ SudokuBoard.prototype = {
       return;
     n = ~~n;
     if (n < 1 || n > 9) {
-      this.updateHints(x, y);
+      this.updateNotes(x, y);
       return;
     }
     var fontSize = ~~(this.squareSize * 0.75);
-    var font = 'bold ' + fontSize + 'px arial';
+    var font = 'bold ' + fontSize + 'px sans-serif';
     if (color && n !== this.board[y][x])
       this._errors[y][x] = false;
     if (this._errors[y][x]) {
@@ -209,9 +247,30 @@ SudokuBoard.prototype = {
     }
     this.board[y][x] = n;
     var posX = loc[0] + (this.squareSize >> 1),
-        posY = loc[1] + this.squareSize;
+        posY = loc[1];
     var fontHeight = getFontHeight(font, n);
-    posY -= (this.squareSize - fontHeight) >> 1;
+    posY += fontHeight;
+    posY += (this.squareSize - fontHeight) >> 1;
+    this._ctx.textAlign = 'center';
+    this._ctx.textBaseline = 'bottom';
+    this._ctx.font = font;
+    this._ctx.fillText(n, posX, posY);
+  },
+  addNote: function(x, y, n) {
+    this._notes[y][x][n - 1] = true;
+    var loc = this._squareLocation(x, y);
+    var hs = (this.squareSize / 3);
+    var xx = (n - 1) % 3, yy = ~~((n - 1) / 3);
+    var posX = loc[0] + ~~(hs * (xx + 0.5)),
+        posY = loc[1];
+    var fontSize = ~~(hs * 0.75);
+    var font = 'bold ' + fontSize + 'px sans-serif';
+    var fontHeight = getFontHeight(font, n);
+    posY += fontHeight;
+    posY += hs * yy;
+    posY += (hs - fontHeight) >> 1;
+    this._ctx.font = font;
+    this._ctx.fillStyle = '#777';
     this._ctx.textAlign = 'center';
     this._ctx.textBaseline = 'bottom';
     this._ctx.font = font;
@@ -230,6 +289,7 @@ SudokuBoard.prototype = {
       this.setSquare(x, y, c);
     }
     this.solve();
+    this.focusSquare(4, 4);
   },
   _drawLines: function() {
     var off = 0;
@@ -267,46 +327,23 @@ SudokuBoard.prototype = {
     var solver = new SudokuSolver();
     return this._solution = solver.solve(boardStr).board;
   },
-  updateHints: function(x, y) {
+  updateNotes: function(x, y) {
     for (var i = 0; i < 9; i++) {
-      if (this._hints[y][x][i]) {
-        this.addHint(x, y, i + 1);
+      if (this._notes[y][x][i]) {
+        this.addNote(x, y, i + 1);
       }
     }
-  },
-  addHint: function(x, y, n) {
-    this._hints[y][x][n - 1] = true;
-    var loc = this._squareLocation(x, y);
-    var hs = (this.squareSize / 3);
-    var xx = (n - 1) % 3, yy = ~~((n - 1) / 3);
-    var posX = loc[0] + ~~(hs * (xx + 0.5)),
-        posY = loc[1];
-    var fontSize = ~~(hs * 0.75);
-    var font = 'bold ' + fontSize + 'px arial';
-    var fontHeight = getFontHeight(font, n);
-    posY += fontHeight;
-    posY += hs * yy;
-    posY += (hs - fontHeight) >> 1;
-    // posY -= (hs - fontHeight) >> 1;
-    this._ctx.font = font;
-    this._ctx.fillStyle = '#777';
-    this._ctx.textAlign = 'center';
-    this._ctx.textBaseline = 'bottom';
-    this._ctx.font = font;
-    this._ctx.fillText(n, posX, posY);
   },
   clear: function() {
     this.board = Array.apply(null, Array(9)).map(function() {
       return Array.apply(null, Array(9)).map(function() { return 0; });
     });
-    this._hints = Array.apply(null, Array(9)).map(function() {
+    this._notes = Array.apply(null, Array(9)).map(function() {
       return Array.apply(null, Array(9)).map(function() {
         return [false, false, false, false, false, false, false, false, false];
       });
     });
     this._lastHover = null;
-    this._lastClick = null;
-    this._activeClick = false;
     this._solution = null;
     this._givens = Array.apply(null, Array(9)).map(function() {
       return Array.apply(null, Array(9)).map(function() { return false; });

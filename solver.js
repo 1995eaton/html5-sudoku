@@ -146,7 +146,6 @@ SudokuSolver.prototype = {
         });
       });
       ret.board = board;
-      console.log(ret.board);
     }
     return ret;
   }
