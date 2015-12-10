@@ -42,7 +42,7 @@ SudokuBoard.prototype = {
     if (i !== 9)
       this.focusSquare(x, y);
   },
-  nextSquare(stepSize) {
+  nextSquare: function(stepSize) {
     if (this._lastHover === null)
       return;
     if (stepSize === undefined)
