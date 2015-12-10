@@ -28,7 +28,7 @@
 function SudokuSolver() {}
 
 SudokuSolver.prototype = {
-  _sd_genmat() {
+  _sd_genmat: function() {
     var C = [], R = Array.apply(null, Array(324)).map(function() {
       return [];
     });
@@ -47,7 +47,7 @@ SudokuSolver.prototype = {
     return [R, C];
   },
 
-  _sd_update(sr, sc, r, v) {
+  _sd_update: function(sr, sc, r, v) {
     var R = this.mat[0], C = this.mat[1];
     var min = 10, min_c = 0;
     for (var c2 = 0; c2 < 4; ++c2)
@@ -79,7 +79,7 @@ SudokuSolver.prototype = {
     return min << 16 | min_c;
   },
 
-  solve(str) {
+  solve: function(str) {
     this.mat = this._sd_genmat();
     var R = this.mat[0];
     var i, j, r, c, r2, min, cand, dir, hints = 0;
